@@ -1,0 +1,9 @@
+.idea
+__pycache__/
+venv
+
+# DataBase graph
+db_diagram.drawio
+
+# Configuration
+conf.py
