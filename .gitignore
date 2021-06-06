@@ -3,7 +3,7 @@ __pycache__/
 venv
 
 # DataBase graph
-db_diagram.drawio
+img/db_diagram.drawio
 
 # Configuration
 conf.py

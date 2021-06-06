@@ -14,6 +14,7 @@ class PostgreSQL:
         }
         self.db_name = db_name
         self.user = username
+        self.password = password
         try:
             self.conn = psycopg2.connect(
                 user=username,
@@ -24,16 +25,16 @@ class PostgreSQL:
             )
             self.conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             self.cursor = self.conn.cursor()
+            print(f"{username} has connected successfully to \"{self.db_name}\" database!")
             if self.db_name == "postgres":
-                print(f"{username} has connected successfully to \"{self.db_name}\" database!")
-            print(f"Reconnect to another database to start work.")
+                print(f"Reconnect to another database to start work.")
         except (Exception, psycopg2.Error) as ex:
             self.close()
             print(ex)
 
-    def reconnect(self, username: str, password: str, db_name: str):
+    def reconnect(self, db_name='postgres'):
         self.close()
-        self.__init__(username, password, db_name)
+        self.__init__(self.user, self.password, db_name)
 
     def close(self):
         if self.conn:
@@ -92,7 +93,7 @@ class PostgreSQL:
                 if "-not_null":
                     tmp_res += "NOT NULL"
                 if "-fk" in tmp:
-                    fk_param: str = tmp[tmp.index("-fk")+1]
+                    fk_param: str = tmp[tmp.index("-fk") + 1]
                     if fk_param.startswith("-"):
                         raise Exception("fk cannot apply to another key")
                     fk_text += f'CONSTRAINT {tmp[0]} FOREIGN KEY ({tmp[0]}) REFERENCES public."{fk_param}" (id)\n'
@@ -125,15 +126,18 @@ class PostgreSQL:
         return res[:kwargs.get('limit', len(res))]
 
     # 5
-    def insert_into(self, table_name, key_values: dict):
-        n = len(key_values.values())
-        try:
-            command = f"INSERT INTO {table_name} " \
-                      f"({', '.join(key_values.keys())}) VALUES (" +\
-                      ",".join(["%s" for i in range(n)]) + ")"
-            self.cursor.execute(command, tuple(key_values.values()))
-        except (Exception, psycopg2.Error) as ex:
-            print(ex)
+    def insert_into(self, table_name, key_values):
+        if type(key_values) == dict:
+            key_values = [key_values, ]
+        for i in range(len(key_values)):
+            n = len(key_values.values())
+            try:
+                command = f"INSERT INTO {table_name} " \
+                          f"({', '.join(key_values.keys())}) VALUES (" + \
+                          ",".join(["%s" for i in range(n)]) + ")"
+                self.cursor.execute(command, tuple(key_values.values()))
+            except (Exception, psycopg2.Error) as ex:
+                print(ex)
 
     # 4 / 8 / 9
     def delete_row_by_id(self, table_name: str, id: int):
