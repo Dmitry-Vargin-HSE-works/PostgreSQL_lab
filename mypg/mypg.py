@@ -1,3 +1,5 @@
+import os
+import csv
 from typing import List, Tuple
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
@@ -100,8 +102,8 @@ class PostgreSQL:
 
                 tmp_res += ",\n"
             res += "PRIMARY KEY (id),\n"
-            res += fk_text
-            self.cursor.execute("")
+            res += fk_text + ";"
+            self.cursor.execute(res)
         except (Exception, psycopg2.Error) as ex:
             print(f"\"{table_name}\" IS NOT CREATED! \"{line}\" IS NOT CORRECT!")
             print(ex)
@@ -125,35 +127,92 @@ class PostgreSQL:
         res = self.cursor.fetchall()
         return res[:kwargs.get('limit', len(res))]
 
+    def select_from_as_csv(self, table_name: str):
+        """:return a abs path to csv file"""
+        file_num = max(
+            list(map(
+                lambda x: int(x[4:]),
+                filter(
+                    lambda x: x.startswith('file'),
+                    os.listdir('../data')
+                )
+            )) + [-1]
+        )+1
+        file_name = f'file{file_num}'
+        f = open(f'../data/file{file_name}', 'w')
+        csv_writer = csv.writer(f, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer.writerow(self.get_attributes(table_name))
+        try:
+            self.cursor.execute(f'SELECT * FROM {table_name};')
+            csv_writer.writerows(self.cursor.fetchall())
+        except (Exception, psycopg2.Error) as ex:
+            print(ex)
+        finally:
+            f.close()
+            return os.path.abspath('../data/' + file_name)
+
     # 5
-    def insert_into(self, table_name, key_values):
-        if type(key_values) == dict:
-            key_values = [key_values, ]
-        for i in range(len(key_values)):
-            n = len(key_values.values())
+    def insert_row(self, table_name, row):
+        columns = self.get_attributes(table_name)
+        columns.remove('id')
+        try:
+            command = f"INSERT INTO {table_name} {', '.join(columns)} VALUES ({','.join(['%s'] * len(row))});"
+            self.cursor.execute(command, tuple(row))
+        except (Exception, psycopg2.Error) as ex:
+            print(ex)
+
+    def insert_rows(self, table_name: str, rows: Tuple[Tuple]):
+        if len(rows):
+            columns = self.get_attributes(table_name)
+            columns.remove('id')
             try:
-                command = f"INSERT INTO {table_name} " \
-                          f"({', '.join(key_values.keys())}) VALUES (" + \
-                          ",".join(["%s" for i in range(n)]) + ")"
-                self.cursor.execute(command, tuple(key_values.values()))
+                command = f"INSERT INTO {table_name} {', '.join(columns)} VALUES "
+                command += ', '.join(["(" + ", ".join(["%s"] * len(rows[0])) + ")"] * len(rows))
+                self.cursor.execute(command + ';', sum(rows, tuple()))
             except (Exception, psycopg2.Error) as ex:
                 print(ex)
 
+    def insert_rows_csv(self, table_name: str, path) -> int:
+        """:return a number of inserted rows"""
+        with open('path', 'r') as f:
+            csv_reader = csv.reader(f, delimiter=';', quotechar='"')
+            columns = self.get_attributes(table_name)
+            columns.remove('id')
+            i = 0
+            for row in csv_reader:
+                if i != 0:
+                    try:
+                        command = f"INSERT INTO {table_name} {', '.join(columns)} VALUES ({','.join(['%s'] * len(row))});"
+                        self.cursor.execute(command + ';', tuple(row))
+                    except (Exception, psycopg2.Error) as ex:
+                        print(ex)
+                i += 1
+        return i
+
+    def update_where(self, table_name: str, replacement: dict, where: dict):
+        replacement.pop('id')
+        replacement_str = ", ".join([f"{k} = %s" for k in replacement.keys()])
+        where_str = ", ".join([f"{k} = %s" for k in where.keys()])
+        try:
+            command = f'UPDATE {table_name} SET {replacement_str} WHERE {where_str};'
+        except (Exception, psycopg2.Error) as ex:
+            print(ex)
+
     # 4 / 8 / 9
     def delete_row_by_id(self, table_name: str, id: int):
-        self.cursor.execute(f"DELETE FROM {table_name} WHERE id = {id}")
+        self.cursor.execute(f"DELETE FROM {table_name} WHERE id = {id};")
 
     def delete_all_by(self, table_name: str, **kwargs):
         keys = set(self.get_attributes(table_name)) & set(kwargs.keys())
         command = f"DELETE FROM {table_name} WHERE " + ", ".join([f"{k}={kwargs[k]}" for k in keys])
-        self.cursor.execute(command)
+        self.cursor.execute(command+';')
 
     def clean_table(self, table_name):
         if type(table_name) == str:
-            self.cursor.execute(f"DELETE FROM {table_name}")
+            self.cursor.execute(f"DELETE FROM {table_name};")
         else:
             for t in table_name:
-                self.cursor.execute(f"DELETE FROM {t}")
+                self.cursor.execute(f"DELETE FROM {t};")
 
     def delete_table(self, table_name):
         if type(table_name) == str:

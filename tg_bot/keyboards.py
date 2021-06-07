@@ -24,10 +24,9 @@ def get_keyboard_for_current_database():
     )
     back_button = InlineKeyboardButton(
         '<< Back to DataBases',
-        callback_data=f'connect_to:{db.db_name}')
-    buttons.append(delete_button)
-    buttons.append(back_button)
-    return buttons
+        callback_data=f'start_menu')
+    kb = InlineKeyboardMarkup().add(*buttons).add(delete_button).add(back_button)
+    return kb
 
 
 def get_keyboard_for_current_table(table_name: str):
@@ -54,7 +53,7 @@ def get_keyboard_for_current_table(table_name: str):
             'Clean table',
             callback_data=f'delete_all_from:{table_name}'),
         InlineKeyboardButton(
-            '<< Back to tables',
-            callback_data=f'choose_table:{db.db_name}'),
+            '<<Back to tables',
+            callback_data=f'connect_to:{db.db_name}'),
     ]
-    return buttons
+    return InlineKeyboardMarkup().add(*buttons)

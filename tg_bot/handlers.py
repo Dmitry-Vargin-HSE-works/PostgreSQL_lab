@@ -15,6 +15,22 @@ async def start_menu(mes: types.Message):
         'To connect and start work, choose any below.', reply_markup=keyboard)
 
 
+@dp.callback_query_handler(lambda c: c.data and c.data == 'start_menu')
+async def menu(call_back: types.CallbackQuery):
+    chat_id = call_back.message.chat.id
+    mes_id = call_back.message.message_id
+
+    await bot.edit_message_text(
+        chat_id=chat_id,
+        message_id=mes_id,
+        text='To connect and start work, choose any below.'
+    )
+    await bot.edit_message_reply_markup(
+        chat_id=chat_id,
+        message_id=mes_id,
+        reply_markup=keyboards.get_keyboard_for_start_menu())
+
+
 @dp.callback_query_handler(lambda c: c.data and c.data.startswith('connect_to:'))
 async def reconnect_to(call_back: types.CallbackQuery):
     db_name = call_back.data[call_back.data.find(':') + 1:]
@@ -49,7 +65,7 @@ async def reconnect_to(call_back: types.CallbackQuery):
         )
 
 
-@dp.callback_query_handlers(lambda c: c.data and c.data.startswith('choose_table:'))
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith('choose_table:'))
 async def choose_table(call_back: types.CallbackQuery):
     table_name = call_back.data[call_back.data.find(':') + 1:]
 
@@ -57,30 +73,30 @@ async def choose_table(call_back: types.CallbackQuery):
     mes_id = call_back.message.message_id
 
     if table_name in db.get_tables():
-        await bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=mes_id,
-            reply_markup=keyboards.get_keyboard_for_current_table()
-        )
         await bot.edit_message_text(
             chat_id=chat_id,
             message_id=mes_id,
             text="Choose what you want to do with it."
         )
-    else:
         await bot.edit_message_reply_markup(
             chat_id=chat_id,
             message_id=mes_id,
-            reply_markup=keyboards.get_keyboard_for_current_database()
+            reply_markup=keyboards.get_keyboard_for_current_table(table_name)
         )
+    else:
         await bot.edit_message_text(
             chat_id=chat_id,
             message_id=mes_id,
             text="The table was removed recently!\nChoose any other."
         )
+        await bot.edit_message_reply_markup(
+            chat_id=chat_id,
+            message_id=mes_id,
+            reply_markup=keyboards.get_keyboard_for_current_database()
+        )
 
 
-@dp.callback_query_handlers(lambda c: c.data and c.data == 'delete_database')
+@dp.callback_query_handler(lambda c: c.data and c.data == 'delete_database')
 async def delete_database(call_back: types.CallbackQuery):
     chat_id = call_back.message.chat.id
     mes_id = call_back.message.message_id
@@ -102,7 +118,7 @@ async def delete_database(call_back: types.CallbackQuery):
     )
 
 
-@dp.callback_query_handlers(lambda c: c.data and c.data == 'delete_database_true')
+@dp.callback_query_handler(lambda c: c.data and c.data == 'delete_database_true')
 async def delete_database_true(call_back: types.CallbackQuery):
     chat_id = call_back.message.chat.id
     mes_id = call_back.message.message_id
