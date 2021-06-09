@@ -1,9 +1,11 @@
 .idea
 __pycache__/
 venv
+data
 
 # DataBase graph
 img/db_diagram.drawio
 
 # Configuration
 conf.py
+test.py
