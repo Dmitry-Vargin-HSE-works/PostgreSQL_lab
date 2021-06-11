@@ -18,7 +18,7 @@ from .states import *
 async def start_menu(mes: types.Message, state: FSMContext):
     if state:
         await state.reset_state()
-    db.reconnect()
+    db.reconnect(db_name='postgres')
     keyboard = keyboards.get_keyboard_for_start_menu()
     await mes.answer(
         ('Hello! There you can control a library database and any other you created!\n'
@@ -32,7 +32,7 @@ async def menu(call_back: types.CallbackQuery, state: FSMContext):
         await state.reset_state()
     chat_id = call_back.message.chat.id
     mes_id = call_back.message.message_id
-    db.reconnect()
+    db.reconnect('postgres')
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=mes_id,
@@ -131,7 +131,7 @@ async def delete_database_true(call_back: types.CallbackQuery):
     chat_id = call_back.message.chat.id
     mes_id = call_back.message.message_id
     db_name = db.db_name
-    db.reconnect()
+    db.reconnect(db_name='postgres')
     try:
         db.delete_database(db_name)
         await bot.edit_message_text(
@@ -140,6 +140,7 @@ async def delete_database_true(call_back: types.CallbackQuery):
             text=f'{db_name} has successfully removed.'
         )
     except (Exception, psycopg2.Error) as ex:
+        print(ex)
         await bot.edit_message_text(
             chat_id=chat_id,
             message_id=mes_id,

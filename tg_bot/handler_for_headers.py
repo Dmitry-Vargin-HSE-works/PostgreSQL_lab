@@ -48,8 +48,11 @@ async def select_head(call_back: types.CallbackQuery):
 
     data = db.select_from(table_name, limit=5)
     columns = db.get_attributes(table_name)
-    res = ' | '.join(columns) + '\n' + '\n'.join([' | '.join(map(str, x)) for x in data])
-
+    res = ' | '.join(columns) + '\n' + '\n'.\
+        join([' | '.
+             join(map(str,
+                      map(lambda s: str(s)[:30]+'...' if len(str(s)) > 30 else str(s), x)))
+              for x in data])
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=mes_id,
@@ -132,8 +135,8 @@ async def insert_into(call_back: types.CallbackQuery, state: FSMContext):
     await bot.edit_message_text(
         chat_id=chat_id,
         message_id=mes_id,
-        text='Ok, send me rows that contain the following attributes in the given sequence\n' +
-             ' '.join(columns)
+        text='Ok, send me rows that contain the following attributes in the given sequence split within ;\n' +
+             ' | '.join(columns)
         if call_back.data.startswith('insert_into') else
         'Ok, send me file with rows that contain the following attributes in the given sequence\n' +
         ';'.join(columns) + "\nand rows split within ;",
@@ -146,7 +149,7 @@ async def insert_into_values(mes: types.Message, state: FSMContext):
     chat_id = mes.chat.id
     data = await state.get_data()
     table_name = data.get('table_name')
-    arr = [x.split(' ') for x in mes.text.split('\n')]
+    arr = [map(lambda s: s.strip(), x.split(';')) for x in mes.text.split('\n')]
     try:
         db.insert_rows(table_name, arr)
     except (psycopg2.Error, Exception) as ex:
@@ -308,6 +311,7 @@ async def delete_by_attr_where(mes: types.Message, state: FSMContext):
             text='The data use sent are incorrect.\nTry again.',
             reply_markup=keyboards.get_keyboard_for_cancel_form()
         )
+        raise ex
     else:
         await state.reset_state()
         await bot.send_message(

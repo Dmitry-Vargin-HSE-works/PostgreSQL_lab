@@ -14,6 +14,7 @@ class PostgreSQL:
         self.types = {
             'str': 'character varying',
             'int': 'integer',
+            'serial': 'serial',
             'date': 'date',
             'text': 'text',
             '-fk': '-fk',
@@ -107,8 +108,6 @@ class PostgreSQL:
 
     # 2
     def delete_database(self, db_name: str):
-        if db_name == self.db_name:
-            return
         self.cursor.execute(f"DROP DATABASE \"{db_name}\";")
 
     # 3 / 6
@@ -179,7 +178,7 @@ class PostgreSQL:
                     command = f"INSERT INTO \"{table_name}\" ({', '.join(columns)}) VALUES ({','.join(['%s'] * len(row))});"
                     self.cursor.execute(command + ';', tuple(row))
                 i += 1
-        return i
+        return i-1
 
     def update_where(self, table_name: str, replacement: dict, where: dict):
         if 'id' in replacement.keys():
