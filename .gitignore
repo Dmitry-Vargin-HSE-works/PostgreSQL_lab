@@ -2,6 +2,7 @@
 __pycache__/
 venv
 data
+!/data/qwe.csv
 
 # DataBase graph
 img/db_diagram.drawio
