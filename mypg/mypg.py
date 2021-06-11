@@ -58,13 +58,9 @@ class PostgreSQL:
         return list(sum(self.cursor.fetchall(), tuple()))
 
     def get_attributes(self, table_name: str, with_type=False):
-        try:
-            self.cursor.execute(f"SELECT * FROM {table_name} LIMIT 1;")
-            return {x.name: int(x.type_code) for x in self.cursor.description} \
-                if with_type else [x.name for x in self.cursor.description]
-        except (Exception, psycopg2.Error) as ex:
-            print(ex)
-            return []
+        self.cursor.execute(f"SELECT * FROM \"{table_name}\";")
+        return {x.name: int(x.type_code) for x in self.cursor.description} \
+            if with_type else [x.name for x in self.cursor.description]
 
     # 1
     def create_database(self, db_name):
@@ -113,23 +109,20 @@ class PostgreSQL:
     def delete_database(self, db_name: str):
         if db_name == self.db_name:
             return
-        self.cursor.execute(f"DROP DATABASE {db_name};")
+        self.cursor.execute(f"DROP DATABASE \"{db_name}\";")
 
     # 3 / 6
     def select_from(self, table_name, **kwargs):
         attributes = kwargs.get('attributes', '*')
         if attributes != '*':
             attributes = ", ".join(attributes)
-        try:
-            self.cursor.execute(
-                f"SELECT {attributes} FROM {table_name};")
-        except (Exception, psycopg2.Error) as ex:
-            print(ex)
+        self.cursor.execute(
+            f"SELECT {attributes} FROM \"{table_name}\";")
         res = self.cursor.fetchall()
         return res[:kwargs.get('limit', len(res))]
 
     def select_by_id(self, table_name, id_):
-        self.cursor.execute(f"SELECT * FROM {table_name} WHERE id={id_}")
+        self.cursor.execute(f"SELECT * FROM \"{table_name}\" WHERE id={id_}")
         return self.cursor.fetchall()[0]
 
     def select_from_as_csv(self, table_name: str):
@@ -148,7 +141,7 @@ class PostgreSQL:
         csv_writer = csv.writer(f, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         csv_writer.writerow(self.get_attributes(table_name))
         try:
-            self.cursor.execute(f'SELECT * FROM {table_name};')
+            self.cursor.execute(f'SELECT * FROM \"{table_name}\";')
             csv_writer.writerows(self.cursor.fetchall())
         except (Exception, psycopg2.Error) as ex:
             print(ex)
@@ -161,7 +154,7 @@ class PostgreSQL:
         columns = self.get_attributes(table_name)
         columns.remove('id')
 
-        command = f"INSERT INTO {table_name} {', '.join(columns)} VALUES ({','.join(['%s'] * len(row))});"
+        command = f"INSERT INTO \"{table_name}\" {', '.join(columns)} VALUES ({','.join(['%s'] * len(row))});"
         self.cursor.execute(command, tuple(row))
 
     def insert_rows(self, table_name: str, rows: Tuple[Tuple]):
@@ -170,7 +163,7 @@ class PostgreSQL:
             columns.remove('id')
             rows = tuple(map(tuple, rows))
 
-            command = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES "
+            command = f"INSERT INTO \"{table_name}\" ({', '.join(columns)}) VALUES "
             command += ', '.join(["(" + ", ".join(["%s"] * len(rows[0])) + ")"] * len(rows))
             self.cursor.execute(command + ';', sum(rows, tuple()))
 
@@ -183,7 +176,7 @@ class PostgreSQL:
             i = 0
             for row in csv_reader:
                 if i != 0 and len(row):
-                    command = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({','.join(['%s'] * len(row))});"
+                    command = f"INSERT INTO \"{table_name}\" ({', '.join(columns)}) VALUES ({','.join(['%s'] * len(row))});"
                     self.cursor.execute(command + ';', tuple(row))
                 i += 1
         return i
@@ -192,7 +185,7 @@ class PostgreSQL:
         if 'id' in replacement.keys():
             replacement.pop('id')
         replacement_str = ", ".join([f"{k} = %s" for k in replacement.keys()])
-        command = f'UPDATE {table_name} SET {replacement_str}'
+        command = f'UPDATE \"{table_name}\" SET {replacement_str}'
         params = tuple(replacement.values())
         if where != {}:
             where_str = ", ".join([f"{k} = %s" for k in where.keys()])
@@ -203,25 +196,25 @@ class PostgreSQL:
     # 4 / 8 / 9
     def delete_row_by_atr(self, table_name: str, where: dict):
         replacement_str = ", ".join([f"{k} = %s" for k in where.keys()])
-        command = f'DELETE FROM {table_name} WHERE {replacement_str};'
+        command = f'DELETE FROM \"{table_name}\" WHERE {replacement_str};'
         params = tuple(where.values())
         self.cursor.execute(command, params)
 
     def delete_all_by(self, table_name: str, **kwargs):
         keys = set(self.get_attributes(table_name)) & set(kwargs.keys())
-        command = f"DELETE FROM {table_name} WHERE " + ", ".join([f"{k}={kwargs[k]}" for k in keys])
+        command = f"DELETE FROM \"{table_name}\" WHERE " + ", ".join([f"{k}={kwargs[k]}" for k in keys])
         self.cursor.execute(command+';')
 
     def clean_table(self, table_name):
         if type(table_name) == str:
-            self.cursor.execute(f"DELETE FROM {table_name};")
+            self.cursor.execute(f"DELETE FROM \"{table_name}\";")
         else:
             for t in table_name:
                 self.cursor.execute(f"DELETE FROM {t};")
 
     def delete_table(self, table_name):
         if type(table_name) == str:
-            self.cursor.execute(f"DROP TABLE {table_name};")
+            self.cursor.execute(f"DROP TABLE \"{table_name}\";")
         else:
             for t in table_name:
                 self.cursor.execute(f"DROP TABLE {t};")
